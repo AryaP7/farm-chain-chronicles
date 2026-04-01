@@ -81,3 +81,34 @@ result = calculate_grade(
 
 ### Why Stateless?
 The Scoring Engine manages zero internal state, does not process blockchain transactions, nor connects to a database. It allows highly scalable inference evaluating on-chain or off-chain data at speeds suitable for real-time APIs (or Chainlink orcles).
+
+---
+
+# Module 4: Automated Dispute & Reputation Ledger
+
+This module operates entirely on-chain inside the Solana ecosystem (Rust/Anchor framework). It is triggered by off-chain evaluations (like the Python Engine in Module 2) to penalize bad actors and update a public trust score (MRQA).
+
+## Core Mechanisms
+
+### 1. The Dispute Contract (`FarmChainDispute`)
+- Acts as a timed state machine.
+- `trigger_dispute(batch_id, reason)`: Fired via Oracle when Module 2 yields a `"DISPUTE"` action. Initiates an escrow lock.
+- `resolve_dispute()`: Resolves a dispute once the 48-hour evidence window closes. 
+
+### 2. The Reputation Engine (`ReputationManager`)
+Maintains a trust profile for each transporter. During `resolve_dispute()`, if an FRS drop over the leg is $>5\%$, a penalty is applied.
+The formula calculates a smooth weighted moving average to insulate the score from extreme outliers:
+
+$R_{new} = \frac{(R_{old} \times 80) + (Current\_Performance \times 20)}{100}$
+
+### Anchor State Mappings
+* **`Dispute`**: Holds metadata (`batch_id`, `transporter` pubkey, `dispute_start_time`, `escrow_amount`, `is_resolved`).
+* **`ReputationProfile`**: Tracks long-term public trust, carrying the `score` and `total_trips`.
+
+## Deployment Requirements
+Ensure `solana-cli` and `anchor-cli` are installed for deploying to Devnet.
+```bash
+cd programs/farm_chain_dispute
+anchor build
+anchor deploy
+```
