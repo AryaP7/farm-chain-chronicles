@@ -1,0 +1,12 @@
+# Farm Chain Chronicles — frontend
+#
+# This app is JavaScript/TypeScript. Install dependencies with:
+#   npm install
+# Exact versions are pinned in package-lock.json (commit that file).
+#
+# Runtime (install separately):
+#   Node.js >= 18
+#   npm >= 9
+#
+# No Python packages are required to build or run the Vite app.
+# If you add Python tooling (scripts, docs, CI helpers), list pip packages below.
