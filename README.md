@@ -43,39 +43,38 @@ python main.py --produce Strawberry --origin_w 1000 --current_w 998 --temp 30 --
 
 ---
 
-## Integration / API Guide
+## Integration & I/O Specifications (Module 2)
 
-### Main Function
+To integrate this Python Scoring Engine into your frontend backend (e.g., FastAPI, Node wrapper) or Chainlink external adapters, strictly follow these I/O formats.
 
-```python
-from scoring_engine import calculate_grade
+### Input Format (Arguments passed to `calculate_grade`)
 
-result = calculate_grade(
-    produce_type="Apple",
-    w_origin=1000.0,       # Original weight from farm (grams)
-    w_current=980.0,       # Current weight at handover point (grams)
-    current_temp=22.5,     # Average transit temperature (°C)
-    transit_hours=36.0     # Time spent in transit for an anomaly check
-)
-```
+| Parameter | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| `produce_type` | `str` | Yes | Defines the biological subset (configures Q10 decay constants & grading thresholds). | `"Apple"`, `"Strawberry"` |
+| `w_origin` | `float` | Yes | The absolute harvest weight recorded at Module 1 origin (in grams). | `1000.0` |
+| `w_current` | `float` | Yes | The weight checked at the current hand-over station (in grams). | `980.0` |
+| `current_temp`| `float` | Yes | Average temperature across the transit leg (°C). | `22.5` |
+| `transit_hours`| `float` | Yes | Time elapsed natively calculated during transport (in hours). Used for Anomaly Checks. | `36.0` |
 
-### I/O Data Format
+### Output Format (Returns JSON-compatible `Dict`)
 
-**Input Parameters**
-* `produce_type` (str): Specifies the Produce Tier (e.g., `"Apple"`, `"Strawberry"`). Dictates thresholds and decay constants.
-* `w_origin` (float): Fixed harvest weight logged by Module 1.
-* `w_current` (float): Measured weight at the current transfer station.
-* `current_temp` (float): Avg. thermal signature evaluated over the transit leg.
-* `transit_hours` (float): Leg duration. Used strictly for tampering detection.
+| Key | Type | Description |
+| :--- | :--- | :--- |
+| `score` | `float` | Real calculated Freshness Rate Score (bounded 0.0 - 100.0%). |
+| `grade` | `str` | `"A"`, `"B"`, `"C"`, or `"F"` representing biological thresholds. |
+| `action` | `str` | **Critical Flag**. Either `"ACCEPT"` or `"DISPUTE"`. Directly triggers Module 4 operations. |
+| `remaining_life`| `float` | PDEE Estimated hours of transport viability remaining before rejection limits breach. |
+| `anomaly_detected`| `bool` | `true` if artificial hydration/chemical tampering rules trigger an override. |
 
-**Output Structure (`dict`)**
+*Example Payload:*
 ```json
 {
-  "score": 98.0,            // float: Freshness percentage
-  "grade": "A",             // str: Mapped against produce thresholds
-  "action": "ACCEPT",       // str: Signals Module 4 -> "ACCEPT" or "DISPUTE"
-  "remaining_life": 12.72,  // float: Hours of viable transport remaining (PDEE dynamic output)
-  "anomaly_detected": false // bool: Did it trigger anti-tampering logic?
+  "score": 98.0,
+  "grade": "A",
+  "action": "ACCEPT",
+  "remaining_life": 12.72,
+  "anomaly_detected": false
 }
 ```
 
@@ -101,9 +100,42 @@ The formula calculates a smooth weighted moving average to insulate the score fr
 
 $R_{new} = \frac{(R_{old} \times 80) + (Current\_Performance \times 20)}{100}$
 
-### Anchor State Mappings
-* **`Dispute`**: Holds metadata (`batch_id`, `transporter` pubkey, `dispute_start_time`, `escrow_amount`, `is_resolved`).
-* **`ReputationProfile`**: Tracks long-term public trust, carrying the `score` and `total_trips`.
+---
+
+## Integration & I/O Specifications (Module 4)
+
+To interact with the smart contracts on the Solana blockchain (or via your backend APIs like Anchor TS), pass the following instruction parameters:
+
+### Instruction: `trigger_dispute`
+Fires automatically entirely when Module 2 yields an `"action": "DISPUTE"`.
+
+| Input Parameter | Rust Type | TS/Anchor Type | Description |
+| :--- | :--- | :--- | :--- |
+| `batch_id` | `u64` | `BN` / `number` | The supply chain token tracked. Matches Traceability state. |
+| `reason` | `String` | `string` | The stringified reason ("Temperature Damage", "Base Anomaly", etc.). |
+
+*Accounts Required:*
+* `dispute` (Account `[Writable]`, *Program Derived Address* using `batch_id`)
+* `authority` (Signer)
+* `transporter` (`AccountInfo`, *The accused transport owner PubKey*)
+
+### Instruction: `resolve_dispute`
+Resolves the active escrow dispute ONLY once the exact blockchain Unix timestamp clears a 48-hour hurdle.
+
+| Input Parameter | Rust Type | TS/Anchor Type | Description |
+| :--- | :--- | :--- | :--- |
+| `frs_drop` | `u64` | `BN` / `number` | FRS measurement difference recorded during the transporter's leg. |
+| `current_performance` | `u64` | `BN` / `number` | The scaled Transporter Performance rating assigned. |
+
+*Accounts Required:*
+* `dispute` (Account `[Writable]`, *The previously initialized dispute PDA*)
+* `reputation_profile` (Account `[Writable]`, *PDA mapped to the transporter to receive score deductions*)
+
+*Throws explicitly:*
+- `EvidenceWindowNotClosed`: If 48 hours hasn't elapsed.
+- `AlreadyResolved`: Double-spend prevention.
+
+---
 
 ## Deployment Requirements
 Ensure `solana-cli` and `anchor-cli` are installed for deploying to Devnet.
