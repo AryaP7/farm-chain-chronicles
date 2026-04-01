@@ -14,7 +14,7 @@ const FreshnessSection = () => {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="relative py-24 md:py-32 paper-texture overflow-hidden">
+    <section id="freshness" className="relative py-24 md:py-32 paper-texture overflow-hidden">
       <div className="container mx-auto px-6">
         <motion.div
           ref={ref}
