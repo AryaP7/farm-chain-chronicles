@@ -7,7 +7,7 @@ const FundFarmersSection = () => {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="relative py-24 md:py-32 paper-texture bg-card overflow-hidden">
+    <section id="fund" className="relative py-24 md:py-32 paper-texture bg-card overflow-hidden">
       <div className="container mx-auto px-6">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           {/* Image */}
