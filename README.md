@@ -40,6 +40,9 @@ A fast CLI tool is provided to aggregate the specific IO tests locally for demon
 python main.py --produce Strawberry --origin_w 1000 --current_w 998 --temp 30 --hours 40
 ```
 *(Try this example: At 30°C over 40 hours, natural water loss dictates >0.3% loss via transpiration. With 99.8% FRS at handover, the engine intelligently flags an anti-tampering anomaly even though it's technically a Grade "A", halting escrow payments).*
+
+---
+
 ## Integration / API Guide
 
 ### Main Function
@@ -71,7 +74,7 @@ result = calculate_grade(
   "score": 98.0,            // float: Freshness percentage
   "grade": "A",             // str: Mapped against produce thresholds
   "action": "ACCEPT",       // str: Signals Module 4 -> "ACCEPT" or "DISPUTE"
-  "remaining_life": 16.0,   // float: Hours of viable transport remaining
+  "remaining_life": 12.72,  // float: Hours of viable transport remaining (PDEE dynamic output)
   "anomaly_detected": false // bool: Did it trigger anti-tampering logic?
 }
 ```
